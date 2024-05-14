@@ -1,11 +1,19 @@
 #include <iostream>
 using namespace std;
 
-struct settings{
-    int pomodoro;
-    int short_break;
-    int long_break;
+struct account {
+    string id;
+    string username;
+    string password;
 };
+
+struct settings{
+    int pomodoro[100];
+    int short_break[100];
+    int long_break[100];
+};
+
+
 
 int main(){
     string pili;
@@ -17,8 +25,9 @@ int main(){
     cout<<"Masukkan Pilihan Anda: ";cin>>pili;
     if (pili=="1"){
         int baru;
+        int n = account.id[]
         cout<<"Masukkan Waktu Pomodoro Baru: ";cin>>baru;
-        pomodoro[n][0] = baru;
+        pomodoro[n] = baru;
     }    
     else if (pili=="1"){
 
