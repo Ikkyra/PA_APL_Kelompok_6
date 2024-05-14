@@ -91,7 +91,7 @@ int main() {
             case 2:
                 if (login()) {
                     cout << "Login berhasil!\n";
-                    pomodoro();
+                    int main();
                 } else {
                     cout << "Username atau password salah!\n";
                 }
