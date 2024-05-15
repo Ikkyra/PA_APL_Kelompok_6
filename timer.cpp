@@ -1,52 +1,98 @@
-// struct account{
-//     std::string username;
-//     std::string password;
-//     int id;
-// };
-
-// struct settings{
-//     int pomodoro;
-//     int short_break;
-//     int long_break;
-//     int break_interval;
-// };
-
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <atomic>
+#include <condition_variable>
 #include <iomanip>
 
-void startTimer(const std::string &timerName, int durationInSeconds) {
-    std::cout << timerName << " for " << durationInSeconds / 60 << " minutes started." << std::endl;
-    for (int remainingSeconds = durationInSeconds; remainingSeconds >= 0; --remainingSeconds) {
-        int minutes = remainingSeconds / 60;
-        int seconds = remainingSeconds % 60;
-        std::cout << "\r" << std::setw(2) << std::setfill('0') << minutes << ":"
-                  << std::setw(2) << std::setfill('0') << seconds << " remaining" << std::flush;
+std::atomic<bool> running(false);
+std::condition_variable cv;
+std::mutex mtx;
+
+void timer(int menit, int detik) {
+    int detik_total = menit * 60 + detik;
+    for (int i = 0; i < detik_total; ++i) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (!running) return;
+        int tersisa = detik_total - i - 1;
+        std::cout << "\rWaktu Tersisa: " 
+             << std::setw(2) << std::setfill('0') << tersisa / 60 << ":" 
+             << std::setw(2) << std::setfill('0') << tersisa % 60 
+             << "   " << std::flush; // Untuk Overwrite Character Lebih Yang Terprint
     }
-    std::cout << std::endl << timerName << " ended." << std::endl;
+    std::cout << "\nSesi Selesai!" << std::endl;
+}
+
+void mulai_timer(int menit, int detik) {
+    running = true;
+    std::thread(timer, menit, detik).detach();
+}
+
+void stop_timer() {
+    running = false;
+    cv.notify_all();
+}
+
+void tampilkan_menu() {
+    std::cout << "\nPomodoro Timer\n";
+    std::cout << "1. Mulai Sesi Pomodoro\n";
+    std::cout << "2. Mulai Istirahat Pendel\n";
+    std::cout << "3. Mulai Istirahat Panjang\n";
+    std::cout << "4. Hentikan Timer\n";
+    std::cout << "5. Keluar\n";
+    std::cout << "Masukkan Pilihan Anda: ";
 }
 
 int main() {
-    const int workDuration = 25 * 60; // 25 minutes
-    const int shortBreakDuration = 5 * 60; // 5 minutes
-    const int longBreakDuration = 15 * 60; // 15 minutes
-    const int sessionsBeforeLongBreak = 4; // Number of work sessions before a long break
-
-    int sessionCount = 0;
+    int pilihan;
+    int menit_pomodoro = 5;
+    int menit_istirahat_pendek = 2;
+    int menit_istirahat_panjang = 3;
 
     while (true) {
-        // Start the work session
-        startTimer("Work session", workDuration);
-        sessionCount++;
+        tampilkan_menu();
+        std::cin >> pilihan;
 
-        if (sessionCount % sessionsBeforeLongBreak == 0) {
-            // Long break after the specified number of work sessions
-            startTimer("Long break", longBreakDuration);
-        } else {
-            // Short break after each work session
-            startTimer("Short break", shortBreakDuration);
+        switch (pilihan) {
+            case 1:
+                if (!running) {
+                    std::cout << "Mulai Sesi Pomodoro: " << menit_pomodoro << " menit." << std::endl;
+                    mulai_timer(menit_pomodoro, 0);
+                } else {
+                    std::cout << "Timer Sedang Berjalan." << std::endl;
+                }
+                break;
+            case 2:
+                if (!running) {
+                    std::cout << "Mulai Sesi Istirahat Pendek: " << menit_istirahat_pendek << " menit." << std::endl;
+                    mulai_timer(menit_istirahat_pendek, 0);
+                } else {
+                    std::cout << "Timer Sedang Berjalan." << std::endl;
+                }
+                break;
+            case 3:
+                if (!running) {
+                    std::cout << "Mulai Sesi Istirahat Panjang: " << menit_istirahat_panjang << " menit." << std::endl;
+                    mulai_timer(menit_istirahat_panjang, 0);
+                } else {
+                    std::cout << "Timer Sedang Berjalan." << std::endl;
+                }
+                break;
+            case 4:
+                if (running) {
+                    std::cout << "Berhentikan Timer." << std::endl;
+                    stop_timer();
+                } else {
+                    std::cout << "Tidak Ada Timer Yang Berjalan." << std::endl;
+                }
+                break;
+            case 5:
+                std::cout << "Keluar..." << std::endl;
+                stop_timer();
+                return 0;
+            default:
+                std::cout << "Pilihan Invalid. Tolong Coba Lagi." << std::endl;
+                break;
         }
     }
 
