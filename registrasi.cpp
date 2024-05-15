@@ -124,31 +124,31 @@ bool login() {
     return false;
 }
 
-int main() {
-    loadDataFromCSV(); // Load data from CSV when the program starts
+// int main() {
+//     loadDataFromCSV(); // Load data from CSV when the program starts
 
-    int pilihan;
-    while (true) {
-        std::cout << "1. Registrasi\n2. Login\n3. Keluar\nPilih opsi: ";
-        std::cin >> pilihan;
+//     int pilihan;
+//     while (true) {
+//         std::cout << "1. Registrasi\n2. Login\n3. Keluar\nPilih opsi: ";
+//         std::cin >> pilihan;
         
-        switch (pilihan) {
-            case 1:
-                registrasi();
-                break;
-            case 2:
-                if (login()) {
-                    std::cout << "Login berhasil!\n";
-                    return 0;
-                } else {
-                    std::cout << "Username atau password salah!\n";
-                }
-                break;
-            case 3:
-                return 0;
-            default:
-                std::cout << "Pilihan tidak valid!\n";
-        }
-    }
-    return 0;
-}
+//         switch (pilihan) {
+//             case 1:
+//                 registrasi();
+//                 break;
+//             case 2:
+//                 if (login()) {
+//                     std::cout << "Login berhasil!\n";
+//                     return 0;
+//                 } else {
+//                     std::cout << "Username atau password salah!\n";
+//                 }
+//                 break;
+//             case 3:
+//                 return 0;
+//             default:
+//                 std::cout << "Pilihan tidak valid!\n";
+//         }
+//     }
+//     return 0;
+// }
