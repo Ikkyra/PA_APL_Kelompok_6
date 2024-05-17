@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 const int maks_user = 10;
 std::string usernames[maks_user];
@@ -10,6 +12,10 @@ std::string passwords[maks_user];
 int id[maks_user];
 int userCount = 0;
 std::fstream file;
+
+void jeda(int detik) {
+    std::this_thread::sleep_for(std::chrono::seconds(detik));
+}
 
 bool inputSalah(const std::string& input) {
     return !input.empty();
@@ -59,6 +65,7 @@ void registrasi() {
         std::cin >> username;
         if (!inputSalah(username)) {
             std::cout << "Username tidak boleh kosong!\n";
+            jeda(2);
         }
     } while (!inputSalah(username));
     
@@ -67,12 +74,14 @@ void registrasi() {
         std::cin >> password;
         if (!inputSalah(password)) {
             std::cout << "Password tidak boleh kosong!\n";
+            jeda(2);
         }
     } while (!inputSalah(password));
 
     for (int i = 0; i < userCount; ++i) {
         if (usernames[i] == username) {
             std::cout << "Username sudah terdaftar, buat username lain!\n";
+            jeda(2);
             return;
         }
     }
@@ -94,6 +103,7 @@ void registrasi() {
     
     userCount++;
     std::cout << "Registrasi berhasil!\n";
+    jeda(1);
 }
 
 bool login() {
@@ -105,6 +115,7 @@ bool login() {
         std::cin >> username;
         if (!inputSalah(username)) {
             std::cout << "Username tidak boleh kosong!\n";
+            jeda(2);
         }
     } while (!inputSalah(username));
     
@@ -113,6 +124,7 @@ bool login() {
         std::cin >> password;
         if (!inputSalah(password)) {
             std::cout << "Password tidak boleh kosong!\n";
+            jeda(2);
         }
     } while (!inputSalah(password));
 

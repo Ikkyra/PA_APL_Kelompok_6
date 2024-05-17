@@ -1,13 +1,7 @@
 #include <iostream>
-#include <thread>
-#include <chrono>
 
 #include "registrasi.cpp"
 #include "timer.cpp"
-
-void jeda(int detik) {
-    std::this_thread::sleep_for(std::chrono::seconds(detik));
-}
 
 void menu_utama() {
     int pilihan;
@@ -71,18 +65,21 @@ int main() {
                 break;
             case 2:
                 if (login()) {
-                    system("clear");
-                    // system("cls");
+                    // system("clear");
+                    system("cls");
                     std::cout << "Login berhasil!\n";
+                    jeda(2);
                     menu_utama();
                 } else {
                     std::cout << "Username atau password salah!\n";
+                    jeda(2);
                 }
                 break;
             case 3:
                 return 0;
             default:
                 std::cout << "Pilihan tidak valid!\n";
+                jeda(2);
         }
     }
     return 0;
