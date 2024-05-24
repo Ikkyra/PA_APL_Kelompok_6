@@ -4,7 +4,7 @@
 #include "timer.cpp"
 
 void menu_utama() {
-    int pilihan;
+    int pilihan; 
 
     do {
         // system("clear");
