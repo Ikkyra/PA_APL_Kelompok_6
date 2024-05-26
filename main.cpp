@@ -550,7 +550,6 @@ void stop_timer() {
     cv.notify_all();
     interval_count++;
     std::cout << interval_count << std::endl;
-    std::cout << data.sett[allindeks].long_break << std::endl;
 }
 
 void menu_timer() {
