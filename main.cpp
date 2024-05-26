@@ -16,15 +16,16 @@
 std::atomic<bool> running(false);
 std::condition_variable cv;
 std::mutex mtx;
-
 const int maks_user = 10;
 std::string usernames[maks_user];
 std::string passwords[maks_user];
 int id[maks_user];
 int userCount = 0;
 std::fstream file;
-
 int allindeks = 0;
+int interval_count = 0;
+int login_salah = 0;
+
 struct settings {
     int pomodoro;
     int short_break;
@@ -37,8 +38,13 @@ struct to_do{
     bool status;
 };
 
-to_do to[maks_user][20];
-settings sett[maks_user];
+struct all_data{
+    to_do to[maks_user][20];
+    settings sett[maks_user];
+};
+
+all_data data;
+
 int idx = 0;
 std::string allid;
 
@@ -93,6 +99,14 @@ void loadDataFromCSV() {
     file.close();
 }
 
+bool isValidInteger(const std::string& input) {
+    if (input.empty()) return false;
+    for (char c : input) {
+        if (!std::isdigit(c)) return false;
+    }
+    return true;
+}
+
 void readCSV(const std::string &filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -111,10 +125,10 @@ void readCSV(const std::string &filename) {
 
         while (std::getline(ss, token, ',')) {
             switch (col) {
-                case 0: sett[idx].pomodoro = std::stoi(token); break;
-                case 1: sett[idx].short_break = std::stoi(token); break;
-                case 2: sett[idx].long_break = std::stoi(token); break;
-                case 3: sett[idx].long_break_interval = std::stoi(token); break;
+                case 0: data.sett[idx].pomodoro = std::stoi(token); break;
+                case 1: data.sett[idx].short_break = std::stoi(token); break;
+                case 2: data.sett[idx].long_break = std::stoi(token); break;
+                case 3: data.sett[idx].long_break_interval = std::stoi(token); break;
                 default: break;
             }
             ++col;
@@ -136,7 +150,7 @@ void readCSVtodo(const std::string &filename){
             int col = 0;
 
             while (std::getline(ss, value, ',') && col < 20) {
-                to[row][col].kegiat = value;
+                data.to[row][col].kegiat = value;
                 ++col;
             }
             ++row;
@@ -151,15 +165,16 @@ void writeCSVkeg(const std::string &filename){
     std::ofstream file(filename);
     if (file.is_open()) {
         for (int i = 0; i < 100; ++i) {
-            if (!to[i][0].kegiat.empty()) {
+            if (!data.to[i][0].kegiat.empty()) {
                 for (int j = 0; j < 20; ++j) {
-                    if (!to[i][j].kegiat.empty()) {
-                        file << to[i][j].kegiat;
+                    if (!data.to[i][j].kegiat.empty()) {
+                        file << data.to[i][j].kegiat;
                         if (j < 19) file << ",";
+                        } else {
+                            break;
                         }
                     }
                 file << "\n";
-
             }else{
                 break;
             }
@@ -174,10 +189,10 @@ void writeCSVstat(const std::string &filename) {
     std::ofstream file(filename);
     if (file.is_open()) {
         for (int i = 0; i < 100; ++i) {
-            if (!to[i][0].kegiat.empty()) { 
+            if (!data.to[i][0].kegiat.empty()) { 
                 for (int j = 0; j < 20; ++j) {
-                    if (!to[i][j].kegiat.empty()) { 
-                        file << (to[i][j].status ? "true" : "false");
+                    if (!data.to[i][j].kegiat.empty()) { 
+                        file << (data.to[i][j].status ? "true" : "false");
                         if (j < 19) file << ",";
                     }
                 }
@@ -205,9 +220,9 @@ void readCSVstat(const std::string &filename){
             // Membaca setiap sel pada baris
             while (std::getline(ss, cell, ',') && col < 20) {
                 if (cell == "true") {
-                    to[row][col].status = true;
+                    data.to[row][col].status = true;
                 } else if (cell == "false") {
-                    to[row][col].status = false;
+                    data.to[row][col].status = false;
                 } else {
                     // Penanganan kesalahan jika diperlukan
                     std::cerr << "Invalid value in CSV";
@@ -241,14 +256,19 @@ void bubbleSort(int length, int indeksk) {
     do {
         swapped = false;
         for (int i = 2; i < length; i++) {
-            if (to[indeksk][i - 1].kegiat > to[indeksk][i].kegiat) {
-                std::swap(to[indeksk][i - 1].kegiat, to[indeksk][i].kegiat);
-                std::swap(to[indeksk][i - 1].status, to[indeksk][i].status);
+            if (data.to[indeksk][i - 1].kegiat > data.to[indeksk][i].kegiat) {
+                std::swap(data.to[indeksk][i - 1].kegiat, data.to[indeksk][i].kegiat);
+                std::swap(data.to[indeksk][i - 1].status, data.to[indeksk][i].status);
                 swapped = true;
             }
         }
         length--; 
     } while (swapped);
+}
+
+void clearInputBuffer() {
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
 void registrasi() {
@@ -261,8 +281,7 @@ void registrasi() {
     std::cout << "Registrasi\n";
     
     do {
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
         std::cout << "Masukkan username: ";
         std::getline(std::cin, username);
         if (trim(username).empty()) {
@@ -275,8 +294,6 @@ void registrasi() {
         std::cout << "Masukkan password: ";
         std::getline(std::cin, password);
         if (trim(password).empty()) {
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cout<<"Tidak Bisa Kosong !!!\n";
             jeda(1);
         }
@@ -307,18 +324,18 @@ void registrasi() {
     }
 
     readCSV("dataWaktu.csv");
-    sett[userCount].pomodoro = 5;
-    sett[userCount].short_break = 5;
-    sett[userCount].long_break = 5;
-    sett[userCount].long_break_interval = 5;
+    data.sett[userCount].pomodoro = 5;
+    data.sett[userCount].short_break = 5;
+    data.sett[userCount].long_break = 5;
+    data.sett[userCount].long_break_interval = 5;
 
     file.open("dataWaktu.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
         // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
-        file << sett[userCount].pomodoro << ",";
-        file << sett[userCount].short_break << ",";
-        file << sett[userCount].long_break << ",";
-        file << sett[userCount].long_break_interval << "\n";
+        file << data.sett[userCount].pomodoro << ",";
+        file << data.sett[userCount].short_break << ",";
+        file << data.sett[userCount].long_break << ",";
+        file << data.sett[userCount].long_break_interval << "\n";
         file.close();
     } else {
         std::cerr << "Gagal membuka file dataUser.csv\n";
@@ -327,12 +344,12 @@ void registrasi() {
 
     readCSVtodo("kegiatan.csv");
     std::string ubah = std::to_string(userCount + 1);
-    to[userCount][0].kegiat = ubah;
+    data.to[userCount][0].kegiat = ubah;
 
     file.open("kegiatan.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
         // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
-        file << to[userCount][0].kegiat << ",\n";
+        file << data.to[userCount][0].kegiat << ",\n";
         file.close();
     } else {
         std::cerr << "Gagal membuka file dataUser.csv\n";
@@ -340,12 +357,12 @@ void registrasi() {
     }
 
     readCSVtodo("status.csv");
-    to[userCount][0].status = false;
+    data.to[userCount][0].status = false;
 
     file.open("status.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
         // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
-        file << (to[userCount][0].status ? "true" : "false") << ",\n";
+        file << (data.to[userCount][0].status ? "true" : "false") << ",\n";
         file.close();
     } else {
         std::cerr << "Gagal membuka file dataUser.csv\n";
@@ -361,34 +378,24 @@ bool login() {
     std::string username, password;
     std::cout << "Login\n";
     
-    // do {
-    //     std::cout << "Masukkan username: ";
-    //     std::cin >> username;
-    //     if (!inputSalah(username)) {
-    //         std::cout << "Username tidak boleh kosong!\n";
-    //         jeda(2);
-    //     }
-    // } while (!inputSalah(username));
-    
     do {
         std::cout << "Masukkan username: ";
         std::getline(std::cin, username);
         if (trim(username).empty()) {
-            std::cout << "Username tidak boleh kosong!\n";
-            jeda(2);
+            std::cout<<"Tidak Bisa Kosong !!!\n";
+            jeda(1);
         }
     } while (trim(username).empty());
-
+    
     do {
         std::cout << "Masukkan password: ";
         std::getline(std::cin, password);
         if (trim(password).empty()) {
-            std::cout << "Password tidak boleh kosong!\n";
-            jeda(2);
+            std::cout<<"Tidak Bisa Kosong !!!\n";
+            jeda(1);
         }
     } while (trim(password).empty());
-
-
+    // mencari username menggunakan sequential search
     for (int i = 0; i < userCount; ++i) {
         if (usernames[i] == username && passwords[i] == password) {
             allindeks = i;
@@ -399,7 +406,6 @@ bool login() {
     return false;
 }
 
-// menulis setting timer
 void writeCSV(const std::string &filename) {
     std::ofstream file(filename);
     if (!file.is_open()) {
@@ -409,10 +415,10 @@ void writeCSV(const std::string &filename) {
 
     file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
     for (int i = 0; i < idx; ++i) {
-        file << sett[i].pomodoro << ","
-             << sett[i].short_break << ","
-             << sett[i].long_break << ","
-             << sett[i].long_break_interval << "\n";
+        file << data.sett[i].pomodoro << ","
+             << data.sett[i].short_break << ","
+             << data.sett[i].long_break << ","
+             << data.sett[i].long_break_interval << "\n";
     }
     file.close();
 }
@@ -421,6 +427,7 @@ int menu_setting() {
     int Set[] = {7,7,7,7,7}; // Warna default
     int counter = 1;
     char key;
+    std::string input;
 
     while (true) {
         system("cls");
@@ -457,37 +464,42 @@ int menu_setting() {
                 case 3:
                 case 4:
                     int newValue;
-                    std::cout << "\nMasukkan Waktu Baru: ";
-                    if (!(std::cin >> newValue)) {
-                        std::cin.clear();
-                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                        std::cout << "Error: Harap Masukkan Dalam Bentuk Angka!!" << std::endl;
-                        jeda(1);
+                    std::cout << "Pilih Waktu Yang Baru: ";
+                    
+                    while (true) {
+                        std::getline(std::cin, input);
+                        
+                        if (!isValidInteger(input)) {
+                            std::cout << "Waktu tidak valid. \nSilakan masukkan waktu yang benar: ";
+                            continue;
+                        }
+
+                        newValue = std::stoi(input);
+
+                        if (newValue < 1 ) {
+                            std::cout << "Waktu tidak valid. \nSilakan masukkan waktu yang benar: ";
+                            jeda(1);
+                            continue;
+                        }
+
                         break;
                     }
-
-                    if (newValue < 1) {
-                        jeda(1);
-                        std::cout << "Error: Waktu Tidak Boleh Kurang dari 1" << std::endl;
-                        break;
-                    } else {
                         switch(counter) {
                             case 1:
-                                sett[allindeks].pomodoro = newValue;
+                                data.sett[allindeks].pomodoro = newValue;
                                 break;
                             case 2:
-                                sett[allindeks].short_break = newValue;
+                                data.sett[allindeks].short_break = newValue;
                                 break;
                             case 3:
-                                sett[allindeks].long_break = newValue;
+                                data.sett[allindeks].long_break = newValue;
                                 break;
                             case 4:
-                                sett[allindeks].long_break_interval = newValue;
+                                data.sett[allindeks].long_break_interval = newValue;
                                 break;
                         }
                         jeda(1);
                         std::cout << "Waktu berhasil diperbarui menjadi: " << newValue << std::endl;
-                    }
                     break;
                 case 5:
                     writeCSV("dataWaktu.csv");
@@ -513,7 +525,6 @@ int menu_setting() {
     }
 }
 
-
 void timer(int menit, int detik) {
     int detik_total = menit * 60 + detik;
     for (int i = 0; i < detik_total; ++i) {
@@ -521,11 +532,12 @@ void timer(int menit, int detik) {
         if (!running) return;
         int tersisa = detik_total - i - 1;
         std::cout << "\rWaktu Tersisa: " 
-             << std::setw(2) << std::setfill('0') << tersisa / 60 << ":" 
-             << std::setw(2) << std::setfill('0') << tersisa % 60 
+             << std::setw(2) << tersisa / 60 << ":" 
+             << std::setw(2) << tersisa % 60 
              << "   " << std::flush; // Untuk Overwrite Character Lebih Yang Terprint
     }
     std::cout << "\nSesi Selesai!" << std::endl;
+    interval_count++;
 }
 
 void mulai_timer(int menit, int detik) {
@@ -536,6 +548,9 @@ void mulai_timer(int menit, int detik) {
 void stop_timer() {
     running = false;
     cv.notify_all();
+    interval_count++;
+    std::cout << interval_count << std::endl;
+    std::cout << data.sett[allindeks].long_break << std::endl;
 }
 
 void menu_timer() {
@@ -543,9 +558,9 @@ void menu_timer() {
     int counter = 1;
     char key;
 
-    int menit_pomodoro = sett[allindeks].pomodoro;
-    int menit_istirahat_pendek = sett[allindeks].short_break;
-    int menit_istirahat_panjang = sett[allindeks].long_break;
+    int menit_pomodoro = data.sett[allindeks].pomodoro;
+    int menit_istirahat_pendek = data.sett[allindeks].short_break;
+    int menit_istirahat_panjang = data.sett[allindeks].long_break;
 
     while(true) {
         system("cls");
@@ -599,9 +614,11 @@ void menu_timer() {
                     }
                     break;
                 case 3: 
-                    if (!running) {
+                    if (!running  && interval_count == data.sett[allindeks].long_break_interval) {
                         std::cout << "Mulai Sesi Istirahat Panjang: " << menit_istirahat_panjang << " menit." << std::endl;
                         mulai_timer(menit_istirahat_panjang, 0);
+                        interval_count = 0; // guna reset interval setelah long break
+                        data.sett[allindeks].long_break = 0;
                     } else {
                         std::cout << "Timer Sedang Berjalan." << std::endl;
                     }
@@ -632,50 +649,50 @@ void menu_timer() {
     }
 }
 
-
 int cekindeks(){
     for (int i = 0; i < 100; ++i ){
-        if (to[i][0].kegiat == allid){
+        if (data.to[i][0].kegiat == allid){
             return i;
             break;
         }
-    }
+    }return 100;
 }
 
 int readindex(int indeksk){
     for (int i = 0; i<20;++i){
-        if(to[indeksk][i].kegiat.empty()){
+        if(data.to[indeksk][i].kegiat.empty()){
             return i;
             break;
         }
-    }
+    }return 20;
 }
 
-// Fungsi untuk menambahkan kegiatan ke dalam file CSV
 void tambahKegiatan() {
+    std::cin.clear();
     int indeksk = cekindeks();
     int indekss = readindex(indeksk);
 
-    std::string namaKegiatan;
-    while(true){
-        std::cout<<"Masukkan Kegiatan Baru:  ";
-        std::getline(std::cin, namaKegiatan);
-        if(trim(namaKegiatan).empty()){
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout<<"Tidak Bisa Kosong !!!";
-        }
-        else{
-            to[indeksk][indekss].kegiat = namaKegiatan;
-            to[indeksk][indekss].status = false;
-            std::cout << "Kegiatan berhasil ditambahkan!\n";
-            break;
-        }
+    if (indekss == 20){
+        std::cout<<"Telah Mencapai Jumlah Maksimum Kegiatan !!!\n";
+    }else{
+        std::string namaKegiatan;
+        while(true){
+            std::cout<<"Masukkan Kegiatan Baru:  ";
+            std::getline(std::cin, namaKegiatan);
+            if(trim(namaKegiatan).empty()){
+                std::cout<<"Tidak Bisa Kosong !!!\n";
+            }
+            else{
+                data.to[indeksk][indekss].kegiat = namaKegiatan;
+                data.to[indeksk][indekss].status = false;
+                std::cout << "Kegiatan berhasil ditambahkan!\n";
+                break;
+            }
 
+        }
     }
 }
 
-// Fungsi untuk menampilkan semua kegiatan dari file CSV dalam bentuk tabel
 void tampilkanKegiatan() {
     int indeksk = cekindeks();
     int indekss = readindex(indeksk);
@@ -688,11 +705,11 @@ void tampilkanKegiatan() {
         std::cout << "------------------------------" << std::endl;
 
         for (int i = 1; i < 20; ++i) {
-            if (!to[indeksk][i].kegiat.empty()) {
-                if(to[indeksk][i].status == true){
-                std::cout << "\033[1;32m" << std::left << std::setw(5) << i << to[indeksk][i].kegiat << "\033[0m" << std::endl;
+            if (!data.to[indeksk][i].kegiat.empty()) {
+                if(data.to[indeksk][i].status == true){
+                std::cout << "\033[1;32m" << std::left << std::setw(5) << i << data.to[indeksk][i].kegiat << "\033[0m" << std::endl;
                 }else{
-                    std::cout << std::left << std::setw(5) << i << to[indeksk][i].kegiat << std::endl;
+                    std::cout << std::left << std::setw(5) << i << data.to[indeksk][i].kegiat << std::endl;
 
                 }
             }
@@ -710,30 +727,41 @@ void ubahkegiatan(){
         std::cout << std::left << std::setw(5) << "\nNo" << "Kegiatan" << std::endl;
         std::cout << "------------------------------" << std::endl;
         for (int i = 1; i < 20; ++i) {
-            if (!to[indeksk][i].kegiat.empty()) {
-                std::cout << std::left << std::setw(5) << i << to[indeksk][i].kegiat << std::endl;
+            if (!data.to[indeksk][i].kegiat.empty()) {
+                std::cout << std::left << std::setw(5) << i << data.to[indeksk][i].kegiat << std::endl;
             }
         }
         int nomor;
+        std::string input;
         std::cout << "Pilih Nomor Yang Ingin Diubah: ";
-        while (!(std::cin >> nomor) || nomor < 1 || nomor >= 20 || to[indeksk][nomor].kegiat.empty()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+        
+        while (true) {
+            std::getline(std::cin, input);
+            if (!isValidInteger(input)) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+
+                continue;
+            }
+
+            nomor = std::stoi(input);
+
+            if (nomor < 1 || nomor >= 20 || data.to[indeksk][nomor].kegiat.empty()) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+                continue;
+            }
+
+            break;
         }
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         std::string ubah;
         while(true){
             std::cout<<"Masukkan Kegiatan Baru:  ";
             std::getline(std::cin, ubah);
             if(trim(ubah).empty()){
-                std::cin.clear();
-                std::cout<<"Tidak Bisa Kosong !!!";
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout<<"Tidak Bisa Kosong !!!\n";
             }
             else{
-                to[indeksk][nomor].kegiat = ubah;
-                to[indeksk][nomor].status = false;
+                data.to[indeksk][nomor].kegiat = ubah;
+                data.to[indeksk][nomor].status = false;
                 std::cout << "Kegiatan berhasil diubah!\n";
                 break;
             }
@@ -743,6 +771,7 @@ void ubahkegiatan(){
 }
 
 void delkegiatan(){
+    std::cin.clear();
     int indeksk = cekindeks();
     int indekss = readindex(indeksk);
         if(indekss < 2){
@@ -752,26 +781,40 @@ void delkegiatan(){
         std::cout << std::left << std::setw(5) << "\nNo" << "Kegiatan" << std::endl;
         std::cout << "------------------------------" << std::endl;
         for (int i = 1; i < 20; ++i) {
-            if (!to[indeksk][i].kegiat.empty()) {
-                std::cout << std::left << std::setw(5) << i << to[indeksk][i].kegiat << std::endl;
+            if (!data.to[indeksk][i].kegiat.empty()) {
+                std::cout << std::left << std::setw(5) << i << data.to[indeksk][i].kegiat << std::endl;
             }
         }
         int nomor;
+        std::string input;
         std::cout << "Pilih Nomor Yang Ingin Dihapus: ";
-        while (!(std::cin >> nomor) || nomor < 1 || nomor >= 20 || to[indeksk][nomor].kegiat.empty()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+        
+        while (true) {
+            std::getline(std::cin, input);
+            
+            if (!isValidInteger(input)) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+                continue;
+            }
+
+            nomor = std::stoi(input);
+
+            if (nomor < 1 || nomor >= 20 || data.to[indeksk][nomor].kegiat.empty()) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+                continue;
+            }
+
+            break;
         }
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         for (int j = nomor; j < indekss ; j++) {
-            to[indeksk][j].kegiat = to[indeksk][j + 1].kegiat;
-            to[indeksk][j].status = to[indeksk][j + 1].status;
+            data.to[indeksk][j].kegiat = data.to[indeksk][j + 1].kegiat;
+            data.to[indeksk][j].status = data.to[indeksk][j + 1].status;
     }
     }
 }
 
 void ceklis(){
+    std::cin.clear();
     int indeksk = cekindeks();
     int indekss = readindex(indeksk);
         if(indekss < 2){
@@ -780,20 +823,33 @@ void ceklis(){
         std::cout << std::left << std::setw(5) << "\nNo" << "Kegiatan" << std::endl;
         std::cout << "------------------------------" << std::endl;
         for (int i = 1; i < 20; ++i) {
-            if (!to[indeksk][i].kegiat.empty()) {
-                std::cout << std::left << std::setw(5) << i << to[indeksk][i].kegiat << std::endl;
+            if (!data.to[indeksk][i].kegiat.empty()) {
+                std::cout << std::left << std::setw(5) << i << data.to[indeksk][i].kegiat << std::endl;
             }
         }
         int nomor;
-        std::cout << "Pilih Nomor Yang Ingin Dichecklist: ";
-        while (!(std::cin >> nomor) || nomor < 1 || nomor >= 20 || to[indeksk][nomor].kegiat.empty()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
-        }
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        std::cout << "Pilih Nomor Yang Ingin Checklist: ";
+        
+        while (true) {
+            std::getline(std::cin, input);
+            
+            if (!isValidInteger(input)) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+                continue;
+            }
 
-        to[indeksk][nomor].status = true;
+            nomor = std::stoi(input);
+
+            if (nomor < 1 || nomor >= 20 || data.to[indeksk][nomor].kegiat.empty()) {
+                std::cout << "Nomor tidak valid. Silakan masukkan nomor yang benar: ";
+                continue;
+            }
+
+            break;
+        }
+
+        data.to[indeksk][nomor].status = true;
         std::cout << "Kegiatan berhasil dichecklist!\n";
     }
     
@@ -927,6 +983,7 @@ void loadalldata(){
 }
 
 void menu_utama() { 
+    loadalldata();
     int Set[] ={7,7,7,7};
     int counter = 1;
     char key;
@@ -973,6 +1030,7 @@ void menu_utama() {
                 case 3:
                     system("cls");
                     menu_setting();
+                    std::cin.clear();
                     break;
                 case 4:
                     system("cls");
@@ -1023,16 +1081,24 @@ int main() {
         if(key == '\r') {
             switch(counter) {
                 case 1:
+                    system("cls");
                     registrasi();
                     break;
                 case 2:
-                    if(login()) {
+                    system("cls");
+                    if(login_salah == 3) {
+                        std::cout << "Anda melebihi batas input";
+                        return 0;
+                    }
+
+                    else if(login()) {
                         system("cls");
                         std::cout << "Login Berhasil!\n";
                         jeda(2);
                         menu_utama(); // Rekursif
                     } else {
                         std::cout << "Username atau Password Salah!\n";
+                        login_salah++;
                         jeda(2);
                     }
                     break;
