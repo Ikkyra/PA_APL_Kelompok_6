@@ -1,21 +1,21 @@
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <thread>
-#include <chrono>
-#include <limits> 
-#include <atomic>
-#include <condition_variable>
-#include <iomanip>
-#include <windows.h>
-#include <conio.h>
+#include <iostream> // Untuk std::cin dan std::cout guna dapat read dan write
+#include <string> // Untuk memanipulasi string dalam program
+#include <fstream> // Untuk dapat read dan write dari file
+#include <sstream> // Untuk dapat membaca objek string seperti stream (std::cin) atau input dari file
+#include <thread> // untuk dapat menjalankan eksekusi instruksi secara bersamaan
+#include <chrono> // Kumpulan fungsi untuk dapat menjalankan exsekusi yang berhubungan dengan waktu
+#include <limits> // Untuk maximum dan minimum dari bentuk numerik dari tipe integral 
+#include <atomic> // Memudahkan manipulasi shared data tanpa mekanisme penguncian data
+#include <condition_variable> // Alat sinkronisasi yang digunakan untuk memberi tahu thread/eksekusi didalam environment multithread bahwa 
+                                // data yang dibagi dapat diakses
+#include <iomanip> // Untuk men-format input dan output di terminal atau console
+#include <windows.h> // API yang isinya header" yang ada didalam sistem windows 
+#include <conio.h> // Untuk dapat membaca input dari keyboard dan menampilakannya di layar atau terminal (conio == console input/output)
 
 
 std::atomic<bool> running(false);
 std::condition_variable cv;
-std::mutex mtx;
+std::mutex mtx; // untuk memastikan thread atau eksekusi dapat mengakses dan mengubah data yang dibagi(shared data)secara teratur
 const int maks_user = 10;
 std::string usernames[maks_user];
 std::string passwords[maks_user];
@@ -331,7 +331,6 @@ void registrasi() {
 
     file.open("dataWaktu.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
-        // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
         file << data.sett[userCount].pomodoro << ",";
         file << data.sett[userCount].short_break << ",";
         file << data.sett[userCount].long_break << ",";
@@ -348,7 +347,6 @@ void registrasi() {
 
     file.open("kegiatan.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
-        // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
         file << data.to[userCount][0].kegiat << ",\n";
         file.close();
     } else {
@@ -361,7 +359,6 @@ void registrasi() {
 
     file.open("status.csv", std::ios::out | std::ios::app);
     if (file.is_open()) {
-        // file << "Pomodoro,Short Break,Long Break,Long Break Interval\n";
         file << (data.to[userCount][0].status ? "true" : "false") << ",\n";
         file.close();
     } else {
@@ -459,10 +456,7 @@ int menu_setting() {
         if (key == '\r') {
             system("cls");
             switch(counter) {
-                case 1:
-                case 2:
-                case 3:
-                case 4:
+
                     int newValue;
                     std::cout << "Pilih Waktu Yang Baru: ";
                     
@@ -509,11 +503,11 @@ int menu_setting() {
             system("pause");
         }
 
-        if (key == 72 && (counter > 1)) // 72 itu value ASCII dari up arrow
+        if (key == 72 && (counter > 1)) // 72 itu value dari up arrow
         {
             counter--;
         }
-        if (key == 80 && (counter < 5)) // 80 itu value ASCII dari down arrow
+        if (key == 80 && (counter < 5)) // 80 itu value dari down arrow
         {
             counter++;
         }
@@ -532,8 +526,8 @@ void timer(int menit, int detik) {
         if (!running) return;
         int tersisa = detik_total - i - 1;
         std::cout << "\rWaktu Tersisa: " 
-             << std::setw(2) << tersisa / 60 << ":" 
-             << std::setw(2) << tersisa % 60 
+             << std::setw(2) << tersisa / 60 << ":" // menghitung sisa menit
+             << std::setw(2) << tersisa % 60 // menghitung sisa detik 
              << "   " << std::flush; // Untuk Overwrite Character Lebih Yang Terprint
     }
     std::cout << "\nSesi Selesai!" << std::endl;
@@ -613,7 +607,7 @@ void menu_timer() {
                     }
                     break;
                 case 3: 
-                    if (!running  && interval_count == data.sett[allindeks].long_break_interval) {
+                    if (!running  && interval_count >= data.sett[allindeks].long_break_interval) {
                         std::cout << "Mulai Sesi Istirahat Panjang: " << menit_istirahat_panjang << " menit." << std::endl;
                         mulai_timer(menit_istirahat_panjang, 0);
                         interval_count = 0; // guna reset interval setelah long break
@@ -1094,7 +1088,7 @@ int main() {
                         system("cls");
                         std::cout << "Login Berhasil!\n";
                         jeda(2);
-                        menu_utama(); // Rekursif
+                        menu_utama();
                     } else {
                         std::cout << "Username atau Password Salah!\n";
                         login_salah++;
